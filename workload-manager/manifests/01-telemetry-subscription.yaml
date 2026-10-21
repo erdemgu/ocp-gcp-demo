@@ -1,0 +1,11 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: google-cloud-cluster-services-for-openshift-telemetry
+  namespace: openshift-operators
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: google-cloud-cluster-services-for-openshift-telemetry
+  source: certified-operators
+  sourceNamespace: openshift-marketplace

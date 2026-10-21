@@ -1,0 +1,17 @@
+# Generated credentials, keys, and environment configuration
+config.env
+*.env
+generated/
+*.json
+*.key
+*.pem
+*-ssh
+*-ssh.pub
+*pull-secret*
+install-config.yaml
+install-config.yaml.bak
+kubeconfig
+auth/
+ocp-cluster/
+.openshift_install*
+log-bundle-*.tar.gz

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: workloadmanager
+  labels:
+    environment: production
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wlm-cluster-environment
+  namespace: workloadmanager
+data:
+  environment: "production"

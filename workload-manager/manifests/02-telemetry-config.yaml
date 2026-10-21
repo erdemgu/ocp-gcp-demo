@@ -1,0 +1,10 @@
+apiVersion: cluster-services-openshift.cloud.google.com/v1alpha1
+kind: TelemetryConfig
+metadata:
+  name: telemetryconfig
+  namespace: openshift-operators
+spec:
+  enabled: true
+  imageVersion: latest
+  serviceAccountCredentialsSecretName: telemetry-agent-sa
+  serviceAccountCredentialsPath: /var/run/secrets/google/workload_agent_sa_key.json

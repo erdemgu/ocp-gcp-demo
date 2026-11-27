@@ -9,33 +9,34 @@ This document describes the architecture for the two independent Phase 2 workloa
 Option 1 demonstrates how a **stateless, multi-replica web tier** (`Cymbal Retail Storefront`) scales horizontally across multiple availability zones while reading and writing shared assets and real-time access logs on a **regional, private Google Cloud Filestore (`Enterprise` tier)** volume provisioned dynamically via the **GCP Filestore CSI Driver Operator**.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryTextColor': '#1f2937', 'lineColor': '#475569' }}}%%
 flowchart TB
     subgraph Local["Local Workstation"]
-        Browser["Browser\nhttps://cymbal-storefront-cymbal-storefront.apps.<CLUSTER>.<DOMAIN>"]
+        Browser["Browser\nhttps://cymbal-storefront-cymbal-storefront.apps.<CLUSTER>.<DOMAIN>"]:::browser
     end
 
     subgraph VPC["Custom VPC: <PREFIX>-vpc"]
-        Bastion["Bastion VM (<PREFIX>-vm-bastion)\nIAP SSH Tunnel (127.0.0.2:443)"]
+        Bastion["Bastion VM (<PREFIX>-vm-bastion)\nIAP SSH Tunnel (127.0.0.2:443)"]:::bastion
 
         subgraph OCP["OpenShift 4.22 Cluster (Worker Subnet)"]
-            Ingress["OpenShift Internal Router (*.apps :443)\nRoute: cymbal-storefront (TLS Edge)"]
-            Svc["Service: cymbal-storefront-svc (:8080)"]
+            Ingress["OpenShift Internal Router (*.apps :443)\nRoute: cymbal-storefront (TLS Edge)"]:::lb
+            Svc["Service: cymbal-storefront-svc (:8080)"]:::service
 
             subgraph NS1["Namespace: cymbal-storefront"]
-                Pod1["Cymbal Storefront Pod 1 (Zone a)\nStateless UBI9 Httpd"]
-                Pod2["Cymbal Storefront Pod 2 (Zone b)\nStateless UBI9 Httpd"]
-                Pod3["Cymbal Storefront Pod 3 (Zone c)\nStateless UBI9 Httpd"]
-                PVC1["PVC: cymbal-shared-assets-pvc\nAccessMode: ReadWriteMany (1Ti)"]
+                Pod1["Cymbal Storefront Pod 1 (Zone a)\nStateless UBI9 Httpd"]:::pod
+                Pod2["Cymbal Storefront Pod 2 (Zone b)\nStateless UBI9 Httpd"]:::pod
+                Pod3["Cymbal Storefront Pod 3 (Zone c)\nStateless UBI9 Httpd"]:::pod
+                PVC1["PVC: cymbal-shared-assets-pvc\nAccessMode: ReadWriteMany (1Ti)"]:::pvc
             end
 
-            FilestoreCSI["GCP Filestore CSI Driver Operator\n(filestore.csi.storage.gke.io)\nStorageClass: filestore-regional-csi"]
+            FilestoreCSI["GCP Filestore CSI Driver Operator\n(filestore.csi.storage.gke.io)\nStorageClass: filestore-regional-csi"]:::operator
         end
 
-        PSA["Private Service Access (PSA)\nVPC Peering (servicenetworking.googleapis.com)\nAllocated /20 Range: <PREFIX>-psa-range"]
+        PSA["Private Service Access (PSA)\nVPC Peering (servicenetworking.googleapis.com)\nAllocated /20 Range: <PREFIX>-psa-range"]:::network
     end
 
     subgraph ManagedNet["Google Managed Services Network"]
-        Filestore["Regional Cloud Filestore (Enterprise Tier)\nMulti-Zone High Availability NFSv3 Share\nPrivate IP Only"]
+        Filestore["Regional Cloud Filestore (Enterprise Tier)\nMulti-Zone High Availability NFSv3 Share\nPrivate IP Only"]:::storage
     end
 
     Browser -->|"127.0.0.2:443"| Bastion
@@ -47,6 +48,22 @@ flowchart TB
     FilestoreCSI -.->|"Creates Regional Instance"| Filestore
     Pod1 & Pod2 & Pod3 <-->|"NFSv3 over Private Service Access"| PSA
     PSA <--> Filestore
+
+    classDef browser fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0c4a6e
+    classDef bastion fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    classDef lb fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+    classDef service fill:#ccfbf1,stroke:#0d9488,stroke-width:2px,color:#134e4a
+    classDef pod fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+    classDef pvc fill:#fef9c3,stroke:#ca8a04,stroke-width:2px,color:#713f12
+    classDef operator fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#312e81
+    classDef network fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#3b0764
+    classDef storage fill:#ffedd5,stroke:#ea580c,stroke-width:2px,color:#7c2d12
+
+    style Local fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#0f172a
+    style VPC fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,stroke-dasharray: 5 5,color:#0369a1
+    style OCP fill:#fff1f2,stroke:#fb7185,stroke-width:1.5px,color:#9f1239
+    style NS1 fill:#f0fdf4,stroke:#4ade80,stroke-width:1.5px,color:#166534
+    style ManagedNet fill:#fff7ed,stroke:#fb923c,stroke-width:1.5px,color:#9a3412
 ```
 
 ### Key Architectural Components (Option 1)
@@ -66,31 +83,32 @@ flowchart TB
 Option 2 demonstrates how a **stateful database and transaction ledger** (`Cymbal Order & Inventory Ledger`) persists transactional data on **Google Cloud Hyperdisk Balanced** block storage (`ReadWriteOnce`) while mounting database credentials and API keys directly from **Google Cloud Secret Manager** using the **Secrets Store CSI Driver Operator**.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryTextColor': '#1f2937', 'lineColor': '#475569' }}}%%
 flowchart TB
     subgraph Local["Local Workstation"]
-        Browser2["Browser\nhttps://cymbal-ledger-cymbal-stateful.apps.<CLUSTER>.<DOMAIN>"]
+        Browser2["Browser\nhttps://cymbal-ledger-cymbal-stateful.apps.<CLUSTER>.<DOMAIN>"]:::browser
     end
 
     subgraph GCP_Sec["Google Cloud Security & Block Storage"]
-        GSM["Google Cloud Secret Manager\n- <PREFIX>-cymbal-db-password\n- <PREFIX>-cymbal-api-key"]
-        Hyperdisk["Google Cloud Hyperdisk Balanced\n20Gi Block Volume (ReadWriteOnce)\nProvisioned via pd.csi.storage.gke.io"]
+        GSM["Google Cloud Secret Manager\n- <PREFIX>-cymbal-db-password\n- <PREFIX>-cymbal-api-key"]:::security
+        Hyperdisk["Google Cloud Hyperdisk Balanced\n20Gi Block Volume (ReadWriteOnce)\nProvisioned via pd.csi.storage.gke.io"]:::storage
     end
 
     subgraph VPC["Custom VPC: <PREFIX>-vpc"]
-        Bastion2["Bastion VM (<PREFIX>-vm-bastion)\nIAP SSH Tunnel (127.0.0.2:443)"]
+        Bastion2["Bastion VM (<PREFIX>-vm-bastion)\nIAP SSH Tunnel (127.0.0.2:443)"]:::bastion
 
         subgraph OCP2["OpenShift 4.22 Cluster (Worker Subnet)"]
-            Ingress2["OpenShift Internal Router (*.apps :443)\nRoute: cymbal-ledger (TLS Edge)"]
+            Ingress2["OpenShift Internal Router (*.apps :443)\nRoute: cymbal-ledger (TLS Edge)"]:::lb
 
             subgraph NS2["Namespace: cymbal-stateful"]
-                UI["Cymbal Ledger Web UI Pod\nQueries PostgreSQL & Displays Live Ledger"]
-                DB["StatefulSet: cymbal-ledger-db-0\nPostgreSQL 16"]
-                SPC["SecretProviderClass: cymbal-gcp-secrets\nMounts /mnt/secrets-store + Syncs K8s Secret"]
-                RWO_PVC["VolumeClaimTemplate PVC\ncymbal-hyperdisk-data (20Gi)\nStorageClass: hyperdisk-balanced-csi"]
+                UI["Cymbal Ledger Web UI Pod\nQueries PostgreSQL & Displays Live Ledger"]:::pod
+                DB["StatefulSet: cymbal-ledger-db-0\nPostgreSQL 16"]:::database
+                SPC["SecretProviderClass: cymbal-gcp-secrets\nMounts /mnt/secrets-store (tmpfs only)"]:::secretcr
+                RWO_PVC["VolumeClaimTemplate PVC\ncymbal-hyperdisk-data (20Gi)\nStorageClass: hyperdisk-balanced-csi"]:::pvc
             end
 
-            SecretsCSI["Secrets Store CSI Driver Operator\n(secrets-store.csi.k8s.io)\n+ GCP Provider DaemonSet"]
-            PD_CSI["GCP PD CSI Driver\n(pd.csi.storage.gke.io)"]
+            SecretsCSI["Secrets Store CSI Driver Operator\n(secrets-store.csi.k8s.io)\n+ GCP Provider DaemonSet"]:::operator
+            PD_CSI["GCP PD CSI Driver\n(pd.csi.storage.gke.io)"]:::csi
         end
     end
 
@@ -104,6 +122,24 @@ flowchart TB
     DB & UI -->|"CSI Inline Volume (/mnt/secrets-store)"| SPC
     SPC --> SecretsCSI
     SecretsCSI -->|"Fetches Secrets via IAM"| GSM
+
+    classDef browser fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0c4a6e
+    classDef security fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#3b0764
+    classDef storage fill:#ffedd5,stroke:#ea580c,stroke-width:2px,color:#7c2d12
+    classDef bastion fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    classDef lb fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+    classDef pod fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+    classDef database fill:#fce7f3,stroke:#db2777,stroke-width:2px,color:#831843
+    classDef secretcr fill:#fae8ff,stroke:#c026d3,stroke-width:2px,color:#701a75
+    classDef pvc fill:#fef9c3,stroke:#ca8a04,stroke-width:2px,color:#713f12
+    classDef operator fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#312e81
+    classDef csi fill:#ccfbf1,stroke:#0d9488,stroke-width:2px,color:#134e4a
+
+    style Local fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#0f172a
+    style GCP_Sec fill:#faf5ff,stroke:#a855f7,stroke-width:1.5px,color:#581c87
+    style VPC fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,stroke-dasharray: 5 5,color:#0369a1
+    style OCP2 fill:#fff1f2,stroke:#fb7185,stroke-width:1.5px,color:#9f1239
+    style NS2 fill:#f0fdf4,stroke:#4ade80,stroke-width:1.5px,color:#166534
 ```
 
 ### Key Architectural Components (Option 2)

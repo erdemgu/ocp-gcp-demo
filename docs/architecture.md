@@ -7,40 +7,41 @@ This document describes the architecture, network topology, compute/storage sizi
 ## 1. High-Level Architecture Diagram
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryTextColor': '#1f2937', 'lineColor': '#475569' }}}%%
 flowchart TB
     subgraph Local["Local Engineer Workstation"]
-        GcloudSSH["gcloud compute ssh --tunnel-through-iap"]
-        LocalHosts["/etc/hosts -> 127.0.0.2\nconsole, oauth & *.apps routes"]
-        WebBrowser["Local Web Browser (HTTPS :443 / HTTP :80)"]
+        GcloudSSH["gcloud compute ssh --tunnel-through-iap"]:::cli
+        LocalHosts["/etc/hosts -> 127.0.0.2\nconsole, oauth & *.apps routes"]:::config
+        WebBrowser["Local Web Browser (HTTPS :443 / HTTP :80)"]:::browser
     end
 
     subgraph GCP["Google Cloud Project (<PROJECT_ID>)"]
-        IAP["Cloud Identity-Aware Proxy (IAP)\nSource Range: 35.235.240.0/20"]
-        RouterNAT["Cloud Router (<PREFIX>-router)\n& Cloud NAT (<PREFIX>-nat)"]
-        PrivateDNS["Cloud Private DNS Zone\n<PREFIX>-cluster.<PREFIX>.openshiftapps.local"]
+        IAP["Cloud Identity-Aware Proxy (IAP)\nSource Range: 35.235.240.0/20"]:::security
+        RouterNAT["Cloud Router (<PREFIX>-router)\n& Cloud NAT (<PREFIX>-nat)"]:::nat
+        PrivateDNS["Cloud Private DNS Zone\n<PREFIX>-cluster.<PREFIX>.openshiftapps.local"]:::dns
 
         subgraph VPC["Custom VPC: <PREFIX>-vpc (/20 CIDR)"]
             subgraph SubBastion["Bastion Subnet: <PREFIX>-subnet-bastion (/24)"]
-                Bastion["Bastion Linux VM (<PREFIX>-vm-bastion)\nDebian 13 | e2-standard-4 | 100GB pd-ssd\nNo External IP | Runs openshift-install & oc"]
+                Bastion["Bastion Linux VM (<PREFIX>-vm-bastion)\nDebian 13 | e2-standard-4 | 100GB pd-ssd\nNo External IP | Runs openshift-install & oc"]:::bastion
             end
 
             subgraph SubCP["Control Plane Subnet: <PREFIX>-subnet-control-plane (/23)"]
-                API_ILB["Internal Passthrough NLB\napi.<CLUSTER>.<DOMAIN>:6443\napi-int.<CLUSTER>.<DOMAIN>:6443"]
-                Master1["Master-0 (Zone a)\ne2-standard-4 | 100GB pd-ssd"]
-                Master2["Master-1 (Zone b)\ne2-standard-4 | 100GB pd-ssd"]
-                Master3["Master-2 (Zone c)\ne2-standard-4 | 100GB pd-ssd"]
+                API_ILB["Internal Passthrough NLB\napi.<CLUSTER>.<DOMAIN>:6443\napi-int.<CLUSTER>.<DOMAIN>:6443"]:::lb
+                Master1["Master-0 (Zone a)\ne2-standard-4 | 100GB pd-ssd"]:::master
+                Master2["Master-1 (Zone b)\ne2-standard-4 | 100GB pd-ssd"]:::master
+                Master3["Master-2 (Zone c)\ne2-standard-4 | 100GB pd-ssd"]:::master
             end
 
             subgraph SubWorker["Worker Subnet: <PREFIX>-subnet-worker (/23)"]
-                Apps_ILB["Internal Ingress Load Balancer\n*.apps.<CLUSTER>.<DOMAIN>:443/:80"]
-                Worker1["Worker-a (Zone a)\nn4-custom-6-20480 | 200GB hyperdisk-balanced"]
-                Worker2["Worker-b (Zone b)\nn4-custom-6-20480 | 200GB hyperdisk-balanced"]
-                Worker3["Worker-c (Zone c)\nn4-custom-6-20480 | 200GB hyperdisk-balanced"]
+                Apps_ILB["Internal Ingress Load Balancer\n*.apps.<CLUSTER>.<DOMAIN>:443/:80"]:::lb
+                Worker1["Worker-a (Zone a)\nn4-custom-6-20480 | 200GB hyperdisk-balanced"]:::worker
+                Worker2["Worker-b (Zone b)\nn4-custom-6-20480 | 200GB hyperdisk-balanced"]:::worker
+                Worker3["Worker-c (Zone c)\nn4-custom-6-20480 | 200GB hyperdisk-balanced"]:::worker
             end
         end
     end
 
-    Internet["Red Hat Registries & Mirrors\n(quay.io, registry.redhat.io, mirror.openshift.com)"]
+    Internet["Red Hat Registries & Mirrors\n(quay.io, registry.redhat.io, mirror.openshift.com)"]:::external
 
     WebBrowser --> LocalHosts
     LocalHosts -->|"Port 443 Local Forward"| GcloudSSH
@@ -53,6 +54,25 @@ flowchart TB
     SubBastion & SubCP & SubWorker --> RouterNAT
     RouterNAT -->|"Outbound Only"| Internet
     VPC -.->|"DNS Resolution"| PrivateDNS
+
+    classDef browser fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0c4a6e
+    classDef config fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#0f172a
+    classDef cli fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#312e81
+    classDef security fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#3b0764
+    classDef nat fill:#ffedd5,stroke:#ea580c,stroke-width:2px,color:#7c2d12
+    classDef dns fill:#ccfbf1,stroke:#0d9488,stroke-width:2px,color:#134e4a
+    classDef bastion fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    classDef lb fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+    classDef master fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337
+    classDef worker fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+    classDef external fill:#fae8ff,stroke:#c026d3,stroke-width:2px,color:#701a75
+
+    style Local fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#0f172a
+    style GCP fill:#f0f9ff,stroke:#38bdf8,stroke-width:1.5px,color:#0c4a6e
+    style VPC fill:#ffffff,stroke:#0284c7,stroke-width:2px,stroke-dasharray: 5 5,color:#0369a1
+    style SubBastion fill:#fffbeb,stroke:#f59e0b,stroke-width:1.5px,color:#92400e
+    style SubCP fill:#fff1f2,stroke:#fb7185,stroke-width:1.5px,color:#9f1239
+    style SubWorker fill:#f0fdf4,stroke:#4ade80,stroke-width:1.5px,color:#166534
 ```
 
 ---

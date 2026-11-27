@@ -139,35 +139,6 @@ controlPlane:
 
 ---
 
-## Known & Solved Issues / Platform Notes
-
-- **Red Hat Account & Free 60-Day Trial License**:
-  - If you or your organization don't have an active Red Hat OpenShift subscription, you can open a Red Hat account for free at [console.redhat.com](https://console.redhat.com/openshift/install/pull-secret) and use the **60-day trial license** (`Self-support, 60 day trial`) to download the pull secret and deploy the cluster.
-
-- **Solved Issue: `MachineWithoutValidNode` Warning (Worker Stuck in `Provisioned` Phase with Marketplace Image & UEFI Secure Boot)**:
-  - **Symptom**: One or more worker `Machine` objects remain in `Provisioned` phase (`machine <worker> does not have valid node reference`) even though the VM is `RUNNING` in Google Cloud, and the VM serial console shows `error: ../../grub-core/kern/efi/sb.c:182:bad shim signature` when booting `Red Hat Enterprise Linux CoreOS 9.8`.
-  - **Why Only Some Nodes Were Affected**: When using the Google Cloud Marketplace image (`redhat-coreos-ocp-413-x86-64-202305021736`), every node initially boots into RHCOS 4.13 (2023 UEFI `shimx64.efi`), downloads the OCP 4.22 (RHCOS 9.8) image, runs `bootupd` to update `/boot/efi/EFI/redhat/shimx64.efi`, and reboots. If the pivot reboot triggers before the updated 4.22 `shimx64.efi` flushes to `/boot/efi` on a node, the 2023 shim rejects the 2026 RHCOS 9.8 kernel signature when GCP Shielded VM Secure Boot (`secureBoot: Enabled`) is active.
-  - **Fix (Automated in `04-bastion-setup.sh`)**: `04-bastion-setup.sh` now automatically sets `secureBoot: Disabled` in `install-config.yaml` whenever `USE_MARKETPLACE_IMAGE="true"`. To recover an already-stuck VM without recreating it:
-    ```bash
-    gcloud compute instances stop <VM_NAME> --zone=<ZONE> --project=<PROJECT_ID>
-    gcloud compute instances update <VM_NAME> --zone=<ZONE> --project=<PROJECT_ID> --no-shielded-secure-boot
-    gcloud compute instances start <VM_NAME> --zone=<ZONE> --project=<PROJECT_ID>
-    # Then approve the node's pending CSRs on the Bastion VM:
-    oc get csr -o name | xargs oc adm certificate approve
-    ```
-
-- **Windows WSL (WSL 2) Compatibility & Setup**:
-  All scripts (`00` through `07` and Phase 2 scripts) are fully compatible with **Windows Subsystem for Linux (WSL 2)**. Follow these steps when running on WSL:
-  1. **Clone inside the Linux filesystem (`~/...`)**: Always clone and run this repository inside your native WSL home directory (e.g., `cd ~ && git clone https://github.com/erdemgu/ocp-gcp-demo.git`), **not** under `/mnt/c/...`. Mounted Windows drives (`/mnt/c/`) ignore `chmod 600` on SSH keys by default, which causes SSH to reject private keys.
-  2. **Automatic `127.0.0.1` Tunnel Binding on WSL**: By default, Windows WSL 2 NAT mode forwards `127.0.0.1` (not `127.0.0.2`) from the Windows host browser into the WSL 2 VM. `00-prereq-config.sh` automatically detects WSL and sets `CONSOLE_LOCAL_IP="127.0.0.1"` in `config.env`.
-  3. **Update the Windows `hosts` File for Windows Browsers**: Because Chrome/Edge on Windows reads `C:\Windows\System32\drivers\etc\hosts` (rather than WSL's `/etc/hosts`), running `./scripts/06-access-and-test.sh hosts` inside WSL will print a ready-to-copy **Administrator PowerShell** command to add the OpenShift Console and Cymbal app hostnames to `C:\Windows\System32\drivers\etc\hosts`.
-
-- **Missing Worker Nodes in Some Zones (`n4-custom-*` Zone Availability)**:
-  - Because this is a multi-zone architecture, OpenShift distributes worker `MachineSet`s across zones (`-a`, `-b`, `-c`). If `n4-custom-*` (such as `n4-custom-6-20480`) is not available in all zones of your selected region (for example, available in `a` and `b` but not `c`), you may see only `worker-a` and `worker-b` nodes running or fewer worker nodes than requested.
-  - **Workaround**: Check `oc get machineset -n openshift-machine-api` on the Bastion VM and either scale up an available zone's `MachineSet` (e.g., `oc scale machineset <worker-a-machineset> -n openshift-machine-api --replicas=2`) or select a machine series available across all zones in that region.
-
----
-
 ## Phase 2 (Optional): Google Cloud Cymbal Demo Workloads
 
 Phase 2 is optional and provides **two independent workload options** built around **Google Cloud Cymbal** sample applications. You can deploy either option individually or both side-by-side:
@@ -228,3 +199,32 @@ See [**`workload-manager/README.md`**](workload-manager/README.md) for quickstar
 - [Google Cloud & Red Hat Solutions](https://cloud.google.com/solutions/redhat)
 - [Google Cloud Blog: Red Hat OpenShift on Google Cloud Migration and Scaling Updates](https://cloud.google.com/blog/topics/partners/red-hat-openshift-on-google-cloud-migration-and-scaling-updates)
 - [Red Hat Hybrid Cloud Console: Download OpenShift Pull Secret](https://console.redhat.com/openshift/install/pull-secret)
+
+---
+
+## Platform Notes & Solved Issues
+
+- **Red Hat Account & Free 60-Day Trial License**:
+  - If you or your organization don't have an active Red Hat OpenShift subscription, you can open a Red Hat account for free at [console.redhat.com](https://console.redhat.com/openshift/install/pull-secret) and use the **60-day trial license** (`Self-support, 60 day trial`) to download the pull secret and deploy the cluster.
+
+- **Solved Issue: `MachineWithoutValidNode` Warning (Worker Stuck in `Provisioned` Phase with Marketplace Image & UEFI Secure Boot)**:
+  - **Symptom**: One or more worker `Machine` objects remain in `Provisioned` phase (`machine <worker> does not have valid node reference`) even though the VM is `RUNNING` in Google Cloud, and the VM serial console shows `error: ../../grub-core/kern/efi/sb.c:182:bad shim signature` when booting `Red Hat Enterprise Linux CoreOS 9.8`.
+  - **Why Only Some Nodes Were Affected**: When using the Google Cloud Marketplace image (`redhat-coreos-ocp-413-x86-64-202305021736`), every node initially boots into RHCOS 4.13 (2023 UEFI `shimx64.efi`), downloads the OCP 4.22 (RHCOS 9.8) image, runs `bootupd` to update `/boot/efi/EFI/redhat/shimx64.efi`, and reboots. If the pivot reboot triggers before the updated 4.22 `shimx64.efi` flushes to `/boot/efi` on a node, the 2023 shim rejects the 2026 RHCOS 9.8 kernel signature when GCP Shielded VM Secure Boot (`secureBoot: Enabled`) is active.
+  - **Fix (Automated in `04-bastion-setup.sh`)**: `04-bastion-setup.sh` now automatically sets `secureBoot: Disabled` in `install-config.yaml` whenever `USE_MARKETPLACE_IMAGE="true"`. To recover an already-stuck VM without recreating it:
+    ```bash
+    gcloud compute instances stop <VM_NAME> --zone=<ZONE> --project=<PROJECT_ID>
+    gcloud compute instances update <VM_NAME> --zone=<ZONE> --project=<PROJECT_ID> --no-shielded-secure-boot
+    gcloud compute instances start <VM_NAME> --zone=<ZONE> --project=<PROJECT_ID>
+    # Then approve the node's pending CSRs on the Bastion VM:
+    oc get csr -o name | xargs oc adm certificate approve
+    ```
+
+- **Windows WSL (WSL 2) Compatibility & Setup**:
+  All scripts (`00` through `07` and Phase 2 scripts) are fully compatible with **Windows Subsystem for Linux (WSL 2)**. Follow these steps when running on WSL:
+  1. **Clone inside the Linux filesystem (`~/...`)**: Always clone and run this repository inside your native WSL home directory (e.g., `cd ~ && git clone https://github.com/erdemgu/ocp-gcp-demo.git`), **not** under `/mnt/c/...`. Mounted Windows drives (`/mnt/c/`) ignore `chmod 600` on SSH keys by default, which causes SSH to reject private keys.
+  2. **Automatic `127.0.0.1` Tunnel Binding on WSL**: By default, Windows WSL 2 NAT mode forwards `127.0.0.1` (not `127.0.0.2`) from the Windows host browser into the WSL 2 VM. `00-prereq-config.sh` automatically detects WSL and sets `CONSOLE_LOCAL_IP="127.0.0.1"` in `config.env`.
+  3. **Update the Windows `hosts` File for Windows Browsers**: Because Chrome/Edge on Windows reads `C:\Windows\System32\drivers\etc\hosts` (rather than WSL's `/etc/hosts`), running `./scripts/06-access-and-test.sh hosts` inside WSL will print a ready-to-copy **Administrator PowerShell** command to add the OpenShift Console and Cymbal app hostnames to `C:\Windows\System32\drivers\etc\hosts`.
+
+- **Missing Worker Nodes in Some Zones (`n4-custom-*` Zone Availability)**:
+  - Because this is a multi-zone architecture, OpenShift distributes worker `MachineSet`s across zones (`-a`, `-b`, `-c`). If `n4-custom-*` (such as `n4-custom-6-20480`) is not available in all zones of your selected region (for example, available in `a` and `b` but not `c`), you may see only `worker-a` and `worker-b` nodes running or fewer worker nodes than requested.
+  - **Workaround**: Check `oc get machineset -n openshift-machine-api` on the Bastion VM and either scale up an available zone's `MachineSet` (e.g., `oc scale machineset <worker-a-machineset> -n openshift-machine-api --replicas=2`) or select a machine series available across all zones in that region.

@@ -99,8 +99,18 @@ Open these 6 tabs before starting the demo so transitions are seamless:
 Inside the **Bastion VM**, inject a new product row into the shared Filestore catalog from **Pod 1**:
 ```bash
 POD1=$(oc get pods -n cymbal-storefront -l app=cymbal-storefront-web -o jsonpath='{.items[0].metadata.name}')
-oc exec -n cymbal-storefront "${POD1}" -- bash -c '
-  echo "CYM-999|Cymbal AI Workstation Dock (Live Filestore Edit)|Accessories|\$299.00|Just Added via NFS!" >> /mnt/cymbal-filestore/catalog.csv
+oc exec -n cymbal-storefront "${POD1}" -- python3 -c '
+import json
+p = "/mnt/cymbal-filestore/cymbal-catalog.json"
+data = json.load(open(p))
+data.append({
+    "sku": "CYM-999",
+    "name": "Cymbal AI Workstation Dock (Live Filestore Edit)",
+    "category": "Accessories",
+    "price": "$299.00",
+    "stock": "Just Added via NFS!"
+})
+json.dump(data, open(p, "w"), indent=2)
 '
 ```
 - Return to **Tab 3**: on the next 3-second refresh, **all 3 pods across zones `-a`, `-b`, and `-c`** immediately display `CYM-999` from the shared Regional Filestore volume.

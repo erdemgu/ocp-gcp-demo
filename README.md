@@ -39,6 +39,7 @@ ocp-gcp-demo/
 ├── docs/
 │   ├── architecture.md                # Detailed architecture, network layout & sizing
 │   ├── step-by-step-guide.md          # Complete end-to-end deployment & testing guide
+│   ├── demo-steps.md                  # Presenter script & step-by-step live demo walkthrough
 │   └── images/                        # Screenshots of OpenShift Console, Cymbal Workloads & Workload Manager
 ├── scripts/
 │   ├── 00-prereq-config.sh            # Interactive prompt for Project, Region, Prefix, /20 CIDR, Pull Secret
@@ -180,6 +181,7 @@ See [**`workload-manager/README.md`**](workload-manager/README.md) for quickstar
 
 ## Documentation Links
 
+- [**Live Demo Script & Presenter Guide (`docs/demo-steps.md`)**](docs/demo-steps.md)
 - [**Phase 1 Architecture Guide (`docs/architecture.md`)**](docs/architecture.md)
 - [**Phase 1 Step-by-Step Deployment Guide (`docs/step-by-step-guide.md`)**](docs/step-by-step-guide.md)
 - [**Phase 2 Workloads Overview (`workloads/README.md`)**](workloads/README.md)

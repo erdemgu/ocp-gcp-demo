@@ -146,7 +146,7 @@ gcloud compute ssh "${BASTION_NAME}" \
   --project="${PROJECT_ID}" \
   --zone="${ZONE}" \
   --tunnel-through-iap \
-  --command="chmod 600 ~/ocp-setup/*-ssh ~/ocp-setup/*-sa-key.json ~/ocp-setup/install-config.yaml ~/ocp-setup/pull-secret.txt && chmod +x ~/ocp-setup/05-bastion-install-ocp.sh ~/ocp-setup/workloads/option1-filestore-stateless/scripts/*.sh ~/ocp-setup/workloads/option2-hyperdisk-stateful/scripts/*.sh ~/ocp-setup/workload-manager/scripts/*.sh"
+  --command="chmod 600 ~/ocp-setup/*-ssh ~/ocp-setup/*-sa-key.json ~/ocp-setup/install-config.yaml ~/ocp-setup/pull-secret.txt && chmod +x ~/ocp-setup/05-bastion-install-ocp.sh ~/ocp-setup/workloads/option1-filestore-stateless/scripts/*.sh ~/ocp-setup/workloads/option2-hyperdisk-stateful/scripts/*.sh ~/ocp-setup/workloads/option3-public-waf-ddos/scripts/*.sh ~/ocp-setup/workload-manager/scripts/*.sh"
 
 echo ""
 echo "=============================================================================="

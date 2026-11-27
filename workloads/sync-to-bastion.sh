@@ -56,7 +56,7 @@ gcloud compute ssh "${BASTION_NAME}" \
   --project="${PROJECT_ID}" \
   --zone="${ZONE}" \
   --tunnel-through-iap \
-  --command="chmod +x ~/ocp-setup/workloads/option1-filestore-stateless/scripts/*.sh ~/ocp-setup/workloads/option2-hyperdisk-stateful/scripts/*.sh"
+  --command="chmod +x ~/ocp-setup/workloads/option1-filestore-stateless/scripts/*.sh ~/ocp-setup/workloads/option2-hyperdisk-stateful/scripts/*.sh ~/ocp-setup/workloads/option3-public-waf-ddos/scripts/*.sh"
 
 echo ""
 echo "=============================================================================="
@@ -71,4 +71,9 @@ echo ""
 echo "   Option 2 (Stateful Cymbal Order Ledger + Hyperdisk + Secret Manager CSI):"
 echo "     ~/ocp-setup/workloads/option2-hyperdisk-stateful/scripts/02-deploy-secrets-csi.sh"
 echo "     ~/ocp-setup/workloads/option2-hyperdisk-stateful/scripts/03-deploy-cymbal-stateful.sh"
+echo ""
+echo "   Option 3 (Public Edge Exposure + Cloud Armor WAF, DDoS, CDN & Global ALB):"
+echo "     ~/ocp-setup/workloads/option3-public-waf-ddos/scripts/01-deploy-public-workload.sh"
+echo "     ~/ocp-setup/workloads/option3-public-waf-ddos/scripts/02-deploy-cloud-armor-and-alb.sh"
+echo "     ~/ocp-setup/workloads/option3-public-waf-ddos/scripts/03-test-waf-and-ddos.sh"
 echo "=============================================================================="

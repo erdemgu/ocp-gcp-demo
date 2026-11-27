@@ -1,6 +1,6 @@
 # Live Demo Script & Presenter Guide: Red Hat OpenShift on Google Cloud
 
-This guide provides a structured, step-by-step **live demonstration script** (~20–30 minutes) for showcasing a **Private, Multi-Zone Red Hat OpenShift 4.22 Self-Managed Cluster on Google Cloud** with **Custom N4 Compute + Hyperdisk Balanced**, **Regional Cloud Filestore (`ReadWriteMany`)**, **Google Cloud Secret Manager (`tmpfs` CSI)**, and **Google Cloud Workload Manager (Preview)**.
+This guide provides a structured, step-by-step **live demonstration script** (~25–35 minutes) for showcasing a **Private, Multi-Zone Red Hat OpenShift 4.22 Self-Managed Cluster on Google Cloud** with **Custom N4 Compute + Hyperdisk Balanced**, **Regional Cloud Filestore (`ReadWriteMany`)**, **Google Cloud Secret Manager (`tmpfs` CSI)**, **Public Edge Exposure with Google Cloud Armor WAF / DDoS / Cloud CDN / Global External ALB**, and **Google Cloud Workload Manager (Preview)**.
 
 > [!TIP]
 > **Audience Focus**: Tie every technical step back to the five business pillars—**Enterprise Security** (100% private cluster), **High Availability** (multi-zone), **Lower TCO** (custom N4 + Hyperdisk + VM stop/start), **Cloud-Native Managed Services** (Filestore + Secret Manager), and **Continuous Governance** (Workload Manager).
@@ -42,12 +42,13 @@ gcloud compute ssh "${BASTION_NAME}" --project="${PROJECT_ID}" --zone="${ZONE}" 
 ```
 
 ### 4. Pre-Open Browser Tabs
-Open these 5 tabs before starting the demo so transitions are seamless:
+Open these 6 tabs before starting the demo so transitions are seamless:
 1. **Google Cloud Console — Compute Engine VM Instances** (filtered by your `${PREFIX}`)
 2. **OpenShift Web Console** (`https://console-openshift-console.apps.<CLUSTER_NAME>.<BASE_DOMAIN>`) — logged in as `kubeadmin`
 3. **Phase 2 Option 1 — Cymbal Retail Storefront** (`https://cymbal-storefront-cymbal-storefront.apps.<CLUSTER_NAME>.<BASE_DOMAIN>`)
 4. **Phase 2 Option 2 — Cymbal Order & Inventory Ledger** (`https://cymbal-ledger-cymbal-stateful.apps.<CLUSTER_NAME>.<BASE_DOMAIN>`)
-5. **Google Cloud Console — Workload Manager Evaluations** (`https://console.cloud.google.com/workload-manager/evaluations`)
+5. **Phase 2 Option 3 — Cymbal Global Public Storefront** (`https://cymbal.<PUBLIC_VIP>.nip.io` — direct public internet access, no IAP tunnel required)
+6. **Google Cloud Console — Workload Manager Evaluations** (`https://console.cloud.google.com/workload-manager/evaluations`)
 
 ---
 
@@ -58,7 +59,8 @@ Open these 5 tabs before starting the demo so transitions are seamless:
 | **Part 1: Private Multi-Zone Cluster & Cost-Optimized Sizing** | 5–7 min | GCP Console (0 External IPs, 3 Zones, N4 Custom + Hyperdisk) + OpenShift Console | **Security, HA & Lower TCO** |
 | **Part 2: Stateless App + Regional Cloud Filestore (`RWX`)** | 5–7 min | 3-replica Cymbal Storefront rotating pods every 3s + live NFS catalog edit across zones | **Multi-Zone Shared Storage** |
 | **Part 3: Stateful PostgreSQL + Hyperdisk + Secret Manager** | 5–7 min | Live order insert on Hyperdisk Balanced + `tmpfs`-only Secret Manager mount (no `etcd` secrets) | **Stateful Performance & Zero-Trust Secrets** |
-| **Part 4: Google Cloud Workload Manager (Preview)** | 5 min | Automated OpenShift telemetry operator + best-practice compliance evaluation report | **Compliance & Security Governance** |
+| **Part 4: Public Edge Exposure (Cloud Armor WAF, DDoS & CDN)** | 5–7 min | Direct public HTTPS via Global ALB, live OWASP Top 10 blocks (`403`), Cloud CDN `HIT`, & L7 DDoS (`429`) | **Defense-in-Depth Edge Security** |
+| **Part 5: Google Cloud Workload Manager (Preview)** | 5 min | Automated OpenShift telemetry operator + best-practice compliance evaluation report | **Compliance & Security Governance** |
 
 ---
 
@@ -130,13 +132,40 @@ oc get pvc -n cymbal-stateful
 
 ---
 
-## Part 4: Google Cloud Workload Manager Governance & Compliance (Preview) (5 Minutes)
+## Part 4: Public Edge Exposure — Cloud Armor WAF, L7 DDoS & Cloud CDN (5–7 Minutes)
+
+### Step 4.1 — Show Public Access from a 100% Private OpenShift Cluster
+1. Switch to **Tab 5 (Cymbal Global Public Storefront — `https://cymbal.<PUBLIC_VIP>.nip.io`)**.
+2. Emphasize:
+   - This URL is served **directly over the public internet** via Google's Global External Application Load Balancer (180+ Anycast POPs, TLS 1.2+ `MODERN` SSL Policy), **without** using the IAP tunnel—while the OpenShift worker VMs still have **zero public IPs** (reached over Google's internal SDN via Zonal `GCE_VM_IP_PORT` NEGs and a least-privilege GFE firewall rule).
+   - Point out the **OpenShift Pod & Private Node Telemetry** card (`restricted-v2` SCC + zero-trust `NetworkPolicy`) and the **Google Cloud Global Load Balancer Headers** (`X-Forwarded-For`, `Via`, `X-Cloud-Trace-Context`).
+
+### Step 4.2 — Live Interactive OWASP Top 10 WAF & Cloud CDN Demo
+Click the interactive buttons directly in the Cymbal Public Storefront UI:
+1. Click **Legitimate Search (200 OK)** (`/?q=trail+bike`) $\rightarrow$ Allowed through Cloud Armor to the OpenShift pod.
+2. Click **Cloud CDN Static Catalog JSON (`/static/catalog.json`)** $\rightarrow$ Cached at Google Edge POPs (`X-CDN-Cache-Status: HIT`).
+3. Click **Test SQL Injection**, **Test XSS Attack**, **Test LFI Path Traversal**, or **Test RCE Command Injection** $\rightarrow$ Immediately blocked at Google's Edge with **`403 Forbidden`** before traffic ever enters the OpenShift VPC.
+
+### Step 4.3 — Automated CLI Attack Simulation & Cloud Logging Audit
+Run the automated verification suite (from the Bastion VM or Local Workstation):
+```bash
+cd ~/ocp-setup/workloads/option3-public-waf-ddos
+./scripts/03-test-waf-and-ddos.sh
+
+# Optional: Trigger the 100 req/min L7 DDoS rate-based ban (HTTP 429 for 120s)
+./scripts/03-test-waf-and-ddos.sh --test-ddos
+```
+Show the live **Cloud Logging** output at the bottom of the script proving `enforcedSecurityPolicy` (`DENY`) telemetry is captured for every blocked attack.
+
+---
+
+## Part 5: Google Cloud Workload Manager Governance & Compliance (Preview) (5 Minutes)
 
 > [!NOTE]
 > Remind the audience that **Google Cloud Workload Manager for OpenShift** and the **Cluster Services for OpenShift Telemetry Operator** are currently in **Preview**.
 
-### Step 4.1 — Show the Telemetry Operator & Evaluation Report
-1. Switch to **Tab 5 (Google Cloud Console $\rightarrow$ Workload Manager $\rightarrow$ Evaluations)** and open your OpenShift evaluation report.
+### Step 5.1 — Show the Telemetry Operator & Evaluation Report
+1. Switch to **Tab 6 (Google Cloud Console $\rightarrow$ Workload Manager $\rightarrow$ Evaluations)** and open your OpenShift evaluation report.
 2. Highlight the **Passed** rules directly validated by our architecture:
    - **Control Plane Multi-Zonal Distribution** — Passed (3 masters across zones `-a`, `-b`, `-c`).
    - **Google Cloud Filestore for Shared Storage** & **Recommend Filestore Regional over Zonal Tier** — Passed (`enterprise` tier regional Filestore).
@@ -145,7 +174,7 @@ oc get pvc -n cymbal-stateful
    - **OpenShift Environment Labeling (Production/Non-Production)** — Passed (`workloadmanager` ConfigMap + `environment=production` labels).
 3. Point out the remaining **Informational/Warning** recommendations (e.g., Workload Identity Federation, CMEK for Block Storage, Google Managed Prometheus) as concrete next-step enterprise hardening conversations.
 
-### Step 4.2 — *(Optional)* Trigger Live Telemetry Collection from Bastion
+### Step 5.2 — *(Optional)* Trigger Live Telemetry Collection from Bastion
 ```bash
 ~/ocp-setup/workload-manager/scripts/03-trigger-and-verify.sh
 ```

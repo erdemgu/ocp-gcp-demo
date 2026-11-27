@@ -38,6 +38,14 @@ if [[ ! "${CONFIRM}" =~ ^[Yy]$ ]]; then
   exit 0
 fi
 
+# 0. Clean up Phase 2 Option 3 Public Edge / Cloud Armor WAF / Global ALB / Zonal NEGs (if present)
+if [[ -x "${REPO_ROOT}/workloads/option3-public-waf-ddos/scripts/04-cleanup-public-waf.sh" ]]; then
+  echo ""
+  echo "--- Step 0: Cleaning Up Option 3 Public Edge, Cloud Armor WAF & Zonal NEGs (if present) ---"
+  "${REPO_ROOT}/workloads/option3-public-waf-ddos/scripts/04-cleanup-public-waf.sh" || \
+    echo "[WARN] Option 3 cleanup encountered a non-fatal error; continuing infrastructure teardown."
+fi
+
 # 1. Destroy OpenShift Cluster from Bastion VM (if Bastion is running)
 echo ""
 echo "--- Step 1: Destroying OpenShift Cluster via Bastion VM ---"
@@ -52,7 +60,7 @@ if gcloud compute instances describe "${BASTION_NAME}" \
       export KUBECONFIG=\"\${KUBECONFIG:-\$HOME/.kube/config}\"
       if command -v oc >/dev/null 2>&1 && oc whoami >/dev/null 2>&1; then
         echo '[CLEANUP] Removing Phase 2 Cymbal workload namespaces (if present) so CSI volumes release cleanly...'
-        oc delete namespace cymbal-storefront cymbal-stateful --ignore-not-found --wait=true || true
+        oc delete namespace cymbal-storefront cymbal-stateful cymbal-public --ignore-not-found --wait=true || true
       fi
       if [[ -d \"\$HOME/ocp-cluster\" && -f \"\$HOME/ocp-cluster/metadata.json\" ]]; then
         ~/ocp-setup/05-bastion-install-ocp.sh destroy

@@ -57,11 +57,13 @@ ocp-gcp-demo/
 │   ├── README.md                      # Phase 2 overview & quickstart
 │   ├── sync-to-bastion.sh             # Syncs workloads/ to ~/ocp-setup/workloads/ on the Bastion VM
 │   ├── docs/
-│   │   ├── architecture-phase2.md     # Architectural diagrams for Filestore, Hyperdisk & Secret Manager CSI
+│   │   ├── architecture-phase2.md     # Architectural diagrams for Filestore, Hyperdisk, Secret Manager & Cloud Armor
 │   │   ├── option1-filestore-stateless-guide.md
-│   │   └── option2-hyperdisk-secrets-stateful-guide.md
+│   │   ├── option2-hyperdisk-secrets-stateful-guide.md
+│   │   └── option3-public-waf-ddos-guide.md
 │   ├── option1-filestore-stateless/   # Option 1: Stateless Cymbal Storefront + Regional Private Filestore CSI
-│   └── option2-hyperdisk-stateful/    # Option 2: Stateful Cymbal Order Ledger + Hyperdisk + Secret Manager CSI
+│   ├── option2-hyperdisk-stateful/    # Option 2: Stateful Cymbal Order Ledger + Hyperdisk + Secret Manager CSI
+│   └── option3-public-waf-ddos/       # Option 3: Cymbal Global Public Storefront + Cloud Armor WAF, DDoS, CDN & Global ALB
 └── workload-manager/           # Phase 3 (Optional): Workload Manager & OpenShift Telemetry Operator (Preview)
     ├── README.md                      # Phase 3 overview & quickstart
     ├── sync-to-bastion.sh             # Syncs workload-manager/ to ~/ocp-setup/ on the Bastion VM
@@ -142,12 +144,13 @@ controlPlane:
 
 ## Phase 2 (Optional): Google Cloud Cymbal Demo Workloads
 
-Phase 2 is optional and provides **two independent workload options** built around **Google Cloud Cymbal** sample applications. You can deploy either option individually or both side-by-side:
+Phase 2 is optional and provides **three independent workload options** built around **Google Cloud Cymbal** sample applications. You can deploy any option individually or all three side-by-side:
 
 | Option | Workload & Pattern | Google Cloud & OpenShift Integrations | Guide |
 | :--- | :--- | :--- | :--- |
 | **Option 1** | **Cymbal Retail Storefront**<br>*(Stateless 3-Replica Web App)* | • **GCP Filestore CSI Driver Operator** (`filestore.csi.storage.gke.io`)<br>• **Regional Private Cloud Filestore** (`enterprise` tier, `ReadWriteMany` NFS)<br>• **Private Service Access (PSA)** `/20` peering to cluster VPC | [Option 1 Guide](workloads/docs/option1-filestore-stateless-guide.md) |
-| **Option 2** | **Cymbal Order & Inventory Ledger**<br>*(Stateful PostgreSQL 16 + Web UI)* | • **Google Cloud Hyperdisk Balanced** (`pd.csi.storage.gke.io`, `ReadWriteOnce`)<br>• **Secrets Store CSI Driver Operator** (`secrets-store.csi.k8s.io`)<br>• **Google Cloud Secret Manager** (`csi-secrets-store-provider-gcp`) | [Option 2 Guide](workloads/docs/option2-hyperdisk-secrets-stateful-guide.md) |
+| **Option 2** | **Cymbal Order & Inventory Ledger**<br>*(Stateful PostgreSQL 16 + Web UI)* | • **Google Cloud Hyperdisk Balanced** (`pd.csi.storage.gke.io`, `ReadWriteOnce`)<br>• **Secrets Store CSI Driver Operator** (`secrets-store.csi.k8s.io`)<br>• **Google Cloud Secret Manager** (`csi-secrets-store-provider-gcp`, `tmpfs`-only) | [Option 2 Guide](workloads/docs/option2-hyperdisk-secrets-stateful-guide.md) |
+| **Option 3** | **Cymbal Global Public Storefront**<br>*(Public Edge Exposure from Private OCP)* | • **Google Cloud Armor WAF (OWASP CRS 4.22)** & L7 DDoS Rate-Limiting<br>• **Global External Application Load Balancer (L7)** + **Cloud CDN** + **TLS 1.2+ SSL Policy**<br>• **Zonal `GCE_VM_IP_PORT` NEGs** + **Least-Privilege GFE Firewall Rule** + **Cloud Monitoring Uptime Check** | [Option 3 Guide](workloads/docs/option3-public-waf-ddos-guide.md) |
 
 See [**`workloads/README.md`**](workloads/README.md) and [**`workloads/docs/architecture-phase2.md`**](workloads/docs/architecture-phase2.md) for full architecture diagrams and deployment instructions.
 
@@ -188,6 +191,7 @@ See [**`workload-manager/README.md`**](workload-manager/README.md) for quickstar
 - [**Phase 2 Architecture Guide (`workloads/docs/architecture-phase2.md`)**](workloads/docs/architecture-phase2.md)
 - [**Phase 2 Option 1: Stateless Cymbal + Regional Filestore Guide (`workloads/docs/option1-filestore-stateless-guide.md`)**](workloads/docs/option1-filestore-stateless-guide.md)
 - [**Phase 2 Option 2: Stateful Cymbal + Hyperdisk + Secret Manager Guide (`workloads/docs/option2-hyperdisk-secrets-stateful-guide.md`)**](workloads/docs/option2-hyperdisk-secrets-stateful-guide.md)
+- [**Phase 2 Option 3: Public Edge Exposure + Cloud Armor WAF, DDoS, CDN & Global ALB Guide (`workloads/docs/option3-public-waf-ddos-guide.md`)**](workloads/docs/option3-public-waf-ddos-guide.md)
 - [**Phase 3 Overview (`workload-manager/README.md`)**](workload-manager/README.md)
 - [**Phase 3 Step-by-Step Guide: Workload Manager & Telemetry Operator (`workload-manager/docs/workload-manager-telemetry-guide.md`)**](workload-manager/docs/workload-manager-telemetry-guide.md)
 
